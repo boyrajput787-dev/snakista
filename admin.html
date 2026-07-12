@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Snakista Café</title>
+<link rel="icon" href="favicon.ico">
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF7FC; --ink:#241733; --ink-soft:#5B4E6E; --violet:#7B2FF7; --coral:#F1595D;
+    --line:rgba(36,23,51,0.12); --card:#FFFFFF; --gradient:linear-gradient(135deg,#7B2FF7,#F1595D);
+    --green:#1DB954; --gold:#B8860B;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:var(--bg); color:var(--ink); font-family:'Manrope',sans-serif; min-height:100vh; }
+  header{ padding:16px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; }
+  .brand{ display:flex; align-items:center; gap:10px; font-family:'Fraunces',serif; font-weight:600; }
+  .brand img{ height:28px; width:28px; border-radius:50%; object-fit:cover; }
+  #logoutBtn{ background:none; border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:0.8rem; font-weight:700; cursor:pointer; color:var(--ink-soft); }
+
+  /* ---- Login screen ---- */
+  #loginScreen{ max-width:360px; margin:80px auto; padding:0 24px; }
+  #loginScreen h1{ font-family:'Fraunces',serif; font-weight:500; font-style:italic; font-size:1.6rem; text-align:center; margin-bottom:24px; }
+  #loginScreen input{ width:100%; padding:13px 16px; border-radius:12px; border:1px solid var(--line); margin-bottom:12px; font-size:0.9rem; }
+  #loginScreen button{ width:100%; padding:13px; border-radius:999px; border:none; background:var(--gradient); color:#fff; font-weight:700; font-size:0.9rem; cursor:pointer; }
+  #loginError{ color:var(--coral); font-size:0.82rem; text-align:center; margin-top:10px; min-height:18px; }
+
+  /* ---- Dashboard ---- */
+  #dashboard{ display:none; max-width:800px; margin:0 auto; padding:24px; }
+  .filter-tabs{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .filter-tab{ padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:#fff; font-size:0.78rem; font-weight:700; cursor:pointer; color:var(--ink-soft); }
+  .filter-tab.active{ background:var(--gradient); color:#fff; border-color:transparent; }
+
+  .order-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin-bottom:14px; }
+  .order-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .order-top h3{ font-family:'Fraunces',serif; font-size:1rem; font-weight:600; }
+  .order-top .time{ font-size:0.75rem; color:var(--ink-soft); }
+  .status-badge{ font-size:0.7rem; font-weight:800; padding:4px 10px; border-radius:999px; white-space:nowrap; }
+  .status-badge.Order-Received{ background:rgba(123,47,247,0.12); color:var(--violet); }
+  .status-badge.Preparing{ background:rgba(184,134,11,0.12); color:var(--gold); }
+  .status-badge.Ready{ background:rgba(29,185,84,0.12); color:var(--green); }
+  .status-badge.Completed{ background:var(--bg); color:var(--ink-soft); }
+
+  .order-meta{ font-size:0.8rem; color:var(--ink-soft); margin-bottom:10px; }
+  .order-items{ font-size:0.85rem; margin-bottom:12px; }
+  .order-items div{ display:flex; justify-content:space-between; padding:3px 0; }
+  .order-total{ font-weight:800; border-top:1px solid var(--line); padding-top:8px; margin-bottom:14px; display:flex; justify-content:space-between; }
+
+  .status-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .status-actions button{ flex:1; padding:9px; border-radius:999px; border:1px solid var(--line); background:#fff; font-size:0.75rem; font-weight:700; cursor:pointer; color:var(--ink); }
+  .status-actions button.active-status{ background:var(--gradient); color:#fff; border-color:transparent; }
+
+  .empty-state{ text-align:center; color:var(--ink-soft); padding:60px 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><img src="logo-icon.png" alt="Snakista Café">Snakista Café — Admin</div>
+  <button id="logoutBtn" style="display:none;">Log out</button>
+</header>
+
+<div id="loginScreen">
+  <h1>Admin Login</h1>
+  <input type="email" id="loginEmail" placeholder="Email" autocomplete="username">
+  <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+  <button id="loginBtn">Log In</button>
+  <p id="loginError"></p>
+</div>
+
+<div id="dashboard">
+  <div class="filter-tabs">
+    <button class="filter-tab active" data-filter="all">All Orders</button>
+    <button class="filter-tab" data-filter="Order Received">New</button>
+    <button class="filter-tab" data-filter="Preparing">Preparing</button>
+    <button class="filter-tab" data-filter="Ready">Ready</button>
+    <button class="filter-tab" data-filter="Completed">Completed</button>
+  </div>
+  <div id="ordersList"></div>
+  <div class="empty-state" id="emptyState" style="display:none;">No orders yet.</div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+  import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAds3rCvnfda_rKTqtRNPWOMepRf_AdViw",
+    authDomain: "snakistacafe-ac975.firebaseapp.com",
+    projectId: "snakistacafe-ac975",
+    storageBucket: "snakistacafe-ac975.firebasestorage.app",
+    messagingSenderId: "929524127825",
+    appId: "1:929524127825:web:071c6476c250aee7684070"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const loginScreen = document.getElementById('loginScreen');
+  const dashboard = document.getElementById('dashboard');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    errorEl.textContent = '';
+    signInWithEmailAndPassword(auth, email, password).catch((err) => {
+      errorEl.textContent = 'Login failed — check your email and password.';
+    });
+  });
+
+  logoutBtn.addEventListener('click', () => signOut(auth));
+
+  let allOrders = [];
+  let currentFilter = 'all';
+  const STATUSES = ["Order Received", "Preparing", "Ready", "Completed"];
+
+  function renderOrders(){
+    const list = document.getElementById('ordersList');
+    const empty = document.getElementById('emptyState');
+    const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
+
+    if(filtered.length === 0){
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = filtered.map(o => {
+      const time = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleString() : '';
+      const itemsHtml = (o.items || []).map(i => `<div><span>${i.name} x${i.qty}</span><span>₹${i.lineTotal}</span></div>`).join('');
+      const statusClass = (o.status || 'Order Received').replace(/ /g, '-');
+      const metaLine = [
+        o.fulfillType === 'delivery' ? 'Delivery' : 'Pickup',
+        o.address ? `— ${o.address}` : '',
+        o.paymentMethod ? `· via ${o.paymentMethod}` : ''
+      ].filter(Boolean).join(' ');
+
+      return `
+      <div class="order-card">
+        <div class="order-top">
+          <div>
+            <h3>#${o.id.slice(0,8).toUpperCase()}</h3>
+            <div class="time">${time}</div>
+          </div>
+          <span class="status-badge ${statusClass}">${o.status || 'Order Received'}</span>
+        </div>
+        <div class="order-meta">${metaLine}${o.instructions ? `<br>Note: ${o.instructions}` : ''}</div>
+        <div class="order-items">${itemsHtml}</div>
+        <div class="order-total"><span>Total</span><span>₹${o.total}</span></div>
+        <div class="status-actions">
+          ${STATUSES.map(s => `<button data-id="${o.id}" data-status="${s}" class="${o.status === s ? 'active-status' : ''}">${s}</button>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.status-actions button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const newStatus = btn.dataset.status;
+        await updateDoc(doc(db, "orders", id), { status: newStatus });
+      });
+    });
+  }
+
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      renderOrders();
+    });
+  });
+
+  let unsubscribeOrders = null;
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      loginScreen.style.display = 'none';
+      dashboard.style.display = 'block';
+      logoutBtn.style.display = 'inline-block';
+
+      const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+      unsubscribeOrders = onSnapshot(q, (snap) => {
+        allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderOrders();
+      });
+    } else {
+      loginScreen.style.display = 'block';
+      dashboard.style.display = 'none';
+      logoutBtn.style.display = 'none';
+      if(unsubscribeOrders) unsubscribeOrders();
+    }
+  });
+</script>
+
+</body>
+</html>
