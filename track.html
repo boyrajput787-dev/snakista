@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Your Order — Snakista Café</title>
+<link rel="icon" href="favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF7FC; --ink:#241733; --ink-soft:#5B4E6E; --violet:#7B2FF7; --coral:#F1595D;
+    --line:rgba(36,23,51,0.12); --card:#FFFFFF; --gradient:linear-gradient(135deg,#7B2FF7,#F1595D);
+    --green:#1DB954; --gold:#B8860B;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:var(--bg); color:var(--ink); font-family:'Manrope',sans-serif; min-height:100vh; }
+  header{ padding:20px 24px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); }
+  header img{ height:30px; width:30px; border-radius:50%; object-fit:cover; }
+  header span{ font-family:'Fraunces',serif; font-weight:600; }
+  main{ max-width:480px; margin:0 auto; padding:40px 24px 80px; }
+  h1{ font-family:'Fraunces',serif; font-weight:500; font-style:italic; font-size:1.6rem; margin-bottom:6px; text-align:center; }
+  .order-id{ text-align:center; color:var(--ink-soft); font-size:0.82rem; margin-bottom:28px; }
+
+  /* ---- Manual order lookup ---- */
+  .lookup-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-bottom:28px; }
+  .lookup-card h4{ font-family:'Fraunces',serif; font-weight:600; font-size:0.9rem; margin-bottom:10px; }
+  .lookup-row{ display:flex; gap:8px; }
+  .lookup-row input{ flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line); font-size:0.85rem; outline:none; }
+  .lookup-row button{ border:none; border-radius:10px; padding:10px 16px; background:var(--gradient); color:#fff; font-weight:700; font-size:0.8rem; cursor:pointer; }
+
+  /* ---- Step timeline ---- */
+  .steps{ position:relative; padding-left:36px; margin-bottom:36px; }
+  .steps-line-bg{ position:absolute; left:11px; top:13px; bottom:13px; width:2px; background:var(--line); }
+  .steps-line-progress{ position:absolute; left:11px; top:13px; bottom:13px; width:2px; background:var(--gradient); transform:scaleY(0); transform-origin:top; transition:transform 0.4s ease; }
+  .step{ position:relative; padding-bottom:30px; z-index:1; }
+  .step:last-child{ padding-bottom:0; }
+  .step::before{
+    content:""; position:absolute; left:-36px; top:2px; width:22px; height:22px; border-radius:50%;
+    background:var(--card); border:2px solid var(--line); transition:all 0.3s ease;
+  }
+  .step.done::before{ background:var(--gradient); border-color:transparent; }
+  .step.current::before{ background:var(--card); border-color:var(--violet); box-shadow:0 0 0 4px rgba(123,47,247,0.15); }
+  .step h3{ font-family:'Fraunces',serif; font-weight:600; font-size:1rem; color:var(--ink-soft); }
+  .step.done h3, .step.current h3{ color:var(--ink); }
+  .step p{ font-size:0.82rem; color:var(--ink-soft); margin-top:2px; }
+  .step .elapsed{ font-size:0.78rem; color:var(--violet); font-weight:700; margin-top:4px; }
+
+  @keyframes readyPop{ 0%{transform:scale(1);} 30%{transform:scale(1.18);} 55%{transform:scale(0.95);} 100%{transform:scale(1);} }
+  .step.pop-anim::before{ animation:readyPop 0.6s ease; }
+  .step.pop-anim h3{ animation:readyPop 0.6s ease; }
+
+  /* ---- Action banners (Accepted/Rejected/Pending/Cancelled) ---- */
+  .action-banner{ text-align:center; border-radius:16px; padding:26px 20px; margin-bottom:24px; }
+  .action-banner.pending{ background:rgba(123,47,247,0.08); border:1px solid rgba(123,47,247,0.25); }
+  .action-banner.accepted{ background:rgba(29,185,84,0.08); border:1px solid rgba(29,185,84,0.3); }
+  .action-banner.rejected{ background:rgba(241,89,93,0.1); border:1px solid rgba(241,89,93,0.3); }
+  .action-banner.cancelled{ background:rgba(241,89,93,0.1); border:1px solid rgba(241,89,93,0.3); }
+  .action-banner h2{ font-family:'Fraunces',serif; font-size:1.15rem; margin-bottom:6px; }
+  .action-banner.pending h2{ color:var(--violet); }
+  .action-banner.accepted h2{ color:var(--green); }
+  .action-banner.rejected h2, .action-banner.cancelled h2{ color:var(--coral); }
+  .action-banner p{ color:var(--ink-soft); font-size:0.85rem; margin-bottom:14px; }
+  .pay-upi-btn{ width:100%; padding:14px; border-radius:999px; border:none; background:var(--gradient); color:#fff; font-weight:800; font-size:0.9rem; cursor:pointer; box-shadow:0 14px 30px -10px rgba(123,47,247,0.45); }
+
+  .order-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .order-card h4{ font-family:'Fraunces',serif; font-weight:600; font-size:0.95rem; margin-bottom:12px; }
+  .item-row{ display:flex; justify-content:space-between; font-size:0.85rem; padding:6px 0; color:var(--ink-soft); }
+  .item-row span:first-child{ color:var(--ink); }
+  .total-row{ display:flex; justify-content:space-between; font-weight:800; font-size:0.95rem; border-top:1px solid var(--line); margin-top:8px; padding-top:10px; }
+
+  .status-msg{ text-align:center; padding:60px 20px; color:var(--ink-soft); }
+  .status-msg.error{ color:var(--coral); }
+  a.back-link{ display:block; text-align:center; margin-top:30px; color:var(--violet); font-weight:700; font-size:0.85rem; text-decoration:none; }
+
+  .confetti-layer{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:200; }
+  .confetti-piece{ position:absolute; top:-20px; width:8px; height:14px; opacity:0.9; animation:confettiFall linear forwards; }
+  @keyframes confettiFall{ 0%{ transform:translateY(0) rotate(0deg); opacity:1; } 100%{ transform:translateY(110vh) rotate(540deg); opacity:0.4; } }
+</style>
+</head>
+<body>
+
+<header><img src="logo-icon.png" alt="Snakista Café"><span>Snakista Café</span></header>
+
+<main>
+  <div class="lookup-card">
+    <h4>Track a different order</h4>
+    <div class="lookup-row">
+      <input type="text" id="lookupInput" placeholder="Paste your Order ID">
+      <button id="lookupBtn">Track</button>
+    </div>
+  </div>
+
+  <div id="loadingState" class="status-msg">Loading your order…</div>
+
+  <div id="orderView" style="display:none;">
+    <h1>Track Your Order</h1>
+    <p class="order-id">Order #<span id="orderIdText"></span></p>
+
+    <div class="action-banner pending" id="pendingBanner" style="display:none;">
+      <h2>⏳ Waiting for Confirmation</h2>
+      <p>We've received your order and will confirm it shortly. This page updates automatically — no need to refresh.</p>
+    </div>
+
+    <div class="action-banner accepted" id="acceptedBanner" style="display:none;">
+      <h2>✅ Order Accepted!</h2>
+      <p>Please complete your payment to get started.</p>
+      <button class="pay-upi-btn" id="payUpiBtn">💳 Pay UPI Now</button>
+    </div>
+
+    <div class="action-banner rejected" id="rejectedBanner" style="display:none;">
+      <h2>Order Rejected</h2>
+      <p>Sorry, we're unable to fulfil this order right now. Please contact us on WhatsApp for details.</p>
+    </div>
+
+    <div class="action-banner cancelled" id="cancelledBanner" style="display:none;">
+      <h2>Order Cancelled</h2>
+      <p>This order was cancelled. Contact us on WhatsApp if you have questions.</p>
+    </div>
+
+    <div class="steps" id="stepsContainer">
+      <div class="steps-line-bg"></div>
+      <div class="steps-line-progress" id="stepsProgress"></div>
+      <div class="step" data-status="Accepted"><h3>Order Confirmed</h3><p>Payment received, order confirmed.</p></div>
+      <div class="step" data-status="Preparing"><h3>Preparing</h3><p id="preparingText">🔥 Your order is sizzling in the kitchen right now.</p><p class="elapsed" id="preparingElapsed"></p></div>
+      <div class="step" data-status="Out for Delivery"><h3>Out for Delivery</h3><p>🛵 On the way / ready for pickup!</p></div>
+      <div class="step" data-status="Delivered"><h3>Delivered</h3><p>🎉 Enjoy your meal!</p></div>
+    </div>
+
+    <div class="order-card">
+      <h4>Order Summary</h4>
+      <div id="itemsList"></div>
+      <div class="total-row"><span>Total</span><span id="orderTotal"></span></div>
+    </div>
+  </div>
+
+  <div id="notFoundState" class="status-msg error" style="display:none;">
+    Order not found. Please check the Order ID, or contact us on WhatsApp.
+  </div>
+
+  <a class="back-link" href="index.html">← Back to Menu</a>
+</main>
+
+<div class="confetti-layer" id="confettiLayer"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAds3rCvnfda_rKTqtRNPWOMepRf_AdViw",
+    authDomain: "snakistacafe-ac975.firebaseapp.com",
+    projectId: "snakistacafe-ac975",
+    storageBucket: "snakistacafe-ac975.firebasestorage.app",
+    messagingSenderId: "929524127825",
+    appId: "1:929524127825:web:071c6476c250aee7684070"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const CAFE_UPI_ID = "snakista@upi";   // TODO: replace with real UPI ID once you have one
+  const CAFE_NAME_UPI = "Snakista Cafe";
+
+  function getSiteDir(){
+    return window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  let orderId = params.get('order');
+
+  const loadingState = document.getElementById('loadingState');
+  const orderView = document.getElementById('orderView');
+  const notFoundState = document.getElementById('notFoundState');
+  const stepsContainer = document.getElementById('stepsContainer');
+  const banners = {
+    pending: document.getElementById('pendingBanner'),
+    accepted: document.getElementById('acceptedBanner'),
+    rejected: document.getElementById('rejectedBanner'),
+    cancelled: document.getElementById('cancelledBanner')
+  };
+
+  const STATUS_ORDER = ["Accepted", "Preparing", "Out for Delivery", "Delivered"];
+  let elapsedTimer = null;
+  let unsubscribe = null;
+  let lastSeenStatus = null;
+  let currentOrderData = null;
+
+  function formatElapsed(ms){
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}m ${String(s).padStart(2,'0')}s elapsed`;
+  }
+  function startElapsedTimer(startMs){
+    if(elapsedTimer) clearInterval(elapsedTimer);
+    const el = document.getElementById('preparingElapsed');
+    function tick(){ el.textContent = formatElapsed(Date.now() - startMs); }
+    tick();
+    elapsedTimer = setInterval(tick, 1000);
+  }
+  function stopElapsedTimer(){
+    if(elapsedTimer){ clearInterval(elapsedTimer); elapsedTimer = null; }
+    const el = document.getElementById('preparingElapsed');
+    if(el) el.textContent = '';
+  }
+
+  const CONFETTI_COLORS = ['#7B2FF7', '#F1595D', '#F5A623', '#1DB954', '#B983FF'];
+  function triggerConfetti(){
+    const layer = document.getElementById('confettiLayer');
+    for(let i = 0; i < 140; i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      piece.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
+      piece.style.animationDelay = (Math.random() * 0.6) + 's';
+      layer.appendChild(piece);
+      setTimeout(() => piece.remove(), 5000);
+    }
+  }
+  function triggerPop(stepStatus){
+    const step = document.querySelector(`.step[data-status="${stepStatus}"]`);
+    if(!step) return;
+    step.classList.remove('pop-anim');
+    void step.offsetWidth;
+    step.classList.add('pop-anim');
+  }
+
+  // A short pleasant "ding" using the Web Audio API — no external sound file needed.
+  function playDing(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [880, 1320].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + i * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.12 + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.5);
+      });
+    } catch(e){ /* audio not available — fail silently */ }
+  }
+
+  function creditLoyaltyPoints(total){
+    const key = 'snakista_points';
+    const current = parseInt(localStorage.getItem(key) || '0', 10);
+    localStorage.setItem(key, current + Math.floor((total || 0) / 10));
+  }
+
+  function hideAllBanners(){
+    Object.values(banners).forEach(b => b.style.display = 'none');
+  }
+
+  function renderOrder(id, data){
+    loadingState.style.display = 'none';
+    orderView.style.display = 'block';
+    currentOrderData = data;
+
+    document.getElementById('orderIdText').textContent = id.slice(0, 8).toUpperCase();
+    const status = data.status || "Pending";
+    hideAllBanners();
+
+    if(status === "Pending"){
+      banners.pending.style.display = 'block';
+      stepsContainer.style.display = 'none';
+      stopElapsedTimer();
+    } else if(status === "Rejected"){
+      banners.rejected.style.display = 'block';
+      stepsContainer.style.display = 'none';
+      stopElapsedTimer();
+    } else if(status === "Cancelled"){
+      banners.cancelled.style.display = 'block';
+      stepsContainer.style.display = 'none';
+      stopElapsedTimer();
+    } else {
+      stepsContainer.style.display = 'block';
+      if(status === "Accepted") banners.accepted.style.display = 'block';
+
+      const currentIdx = STATUS_ORDER.indexOf(status);
+      const lastIdx = STATUS_ORDER.length - 1;
+      document.querySelectorAll('.step').forEach((el, i) => {
+        el.classList.remove('done', 'current');
+        if(i < currentIdx || (i === currentIdx && i === lastIdx)) el.classList.add('done');
+        else if(i === currentIdx) el.classList.add('current');
+      });
+      const progressPct = lastIdx === 0 ? 100 : (Math.max(currentIdx, 0) / lastIdx) * 100;
+      document.getElementById('stepsProgress').style.transform = `scaleY(${progressPct / 100})`;
+
+      if(status === "Preparing" && data.statusUpdatedAt){
+        startElapsedTimer(data.statusUpdatedAt.seconds * 1000);
+      } else {
+        stopElapsedTimer();
+      }
+
+      if(status !== lastSeenStatus){
+        if(status === "Out for Delivery"){ triggerPop("Out for Delivery"); playDing(); }
+        if(status === "Delivered"){ triggerConfetti(); playDing(); creditLoyaltyPoints(data.total); }
+      }
+    }
+
+    lastSeenStatus = status;
+
+    const itemsList = document.getElementById('itemsList');
+    itemsList.innerHTML = (data.items || []).map(it =>
+      `<div class="item-row"><span>${it.name} x${it.qty}</span><span>₹${it.lineTotal}</span></div>`
+    ).join('');
+    document.getElementById('orderTotal').textContent = `₹${data.total}`;
+  }
+
+  function subscribeToOrder(id){
+    if(unsubscribe) unsubscribe();
+    loadingState.style.display = 'block';
+    orderView.style.display = 'none';
+    notFoundState.style.display = 'none';
+    lastSeenStatus = null;
+
+    const ref = doc(db, "orders", id);
+    unsubscribe = onSnapshot(ref, (snap) => {
+      if(!snap.exists()){
+        loadingState.style.display = 'none';
+        notFoundState.style.display = 'block';
+        return;
+      }
+      renderOrder(id, snap.data());
+    }, (err) => {
+      console.error(err);
+      loadingState.style.display = 'none';
+      notFoundState.style.display = 'block';
+    });
+  }
+
+  document.getElementById('payUpiBtn').addEventListener('click', () => {
+    if(!currentOrderData) return;
+    const amount = currentOrderData.total;
+    window.location.href = `upi://pay?pa=${CAFE_UPI_ID}&pn=${encodeURIComponent(CAFE_NAME_UPI)}&am=${amount}&cu=INR&tn=Snakista%20Cafe%20Order`;
+  });
+
+  document.getElementById('lookupBtn').addEventListener('click', () => {
+    const id = document.getElementById('lookupInput').value.trim();
+    if(!id) return;
+    orderId = id;
+    const url = new URL(window.location.href);
+    url.searchParams.set('order', id);
+    window.history.replaceState({}, '', url);
+    subscribeToOrder(id);
+  });
+  document.getElementById('lookupInput').addEventListener('keypress', (e) => {
+    if(e.key === 'Enter') document.getElementById('lookupBtn').click();
+  });
+
+  if(!orderId){
+    loadingState.style.display = 'none';
+    notFoundState.style.display = 'none';
+  } else {
+    document.getElementById('lookupInput').value = orderId;
+    subscribeToOrder(orderId);
+  }
+</script>
+
+</body>
+</html>
