@@ -1,7 +1,0 @@
-# Snakista Café — robots.txt
-# TODO: replace REPLACE_WITH_YOUR_DOMAIN below once you have a live domain (e.g. snakistacafe.com)
-
-User-agent: *
-Allow: /
-
-Sitemap: https://REPLACE_WITH_YOUR_DOMAIN/sitemap.xml
